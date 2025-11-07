@@ -1,20 +1,28 @@
 const express = require('express');
 const axios = require('axios');
-const sgMail = require('@sendgrid/mail');
+const nodemailer = require('nodemailer');
 
 const app = express();
 app.use(express.json());
 
 const {
   MP_ACCESS_TOKEN,
-  SENDGRID_API_KEY,
-  MAIL_TO
+  BREVO_API_KEY,
+  MAIL_TO,
+  PORT
 } = process.env;
 
-sgMail.setApiKey(SENDGRID_API_KEY);
+const transporter = nodemailer.createTransport({
+  host: 'smtp-relay.brevo.com',
+  port: 587,
+  auth: {
+    user: 'mercadopagopixcomprovante@gmail.com', // substitua pelo e-mail cadastrado na Brevo
+    pass: BREVO_API_KEY
+  }
+});
 
 app.get('/', (req, res) => {
-  res.send('Servidor de Webhook do Pix com SendGrid está rodando.');
+  res.send('Servidor de Webhook do Pix com Brevo está rodando.');
 });
 
 app.post('/webhook', async (req, res) => {
@@ -49,23 +57,22 @@ app.post('/webhook', async (req, res) => {
       <p><b>Status:</b> ${payment.status}</p>
       <p><b>ID do pagamento:</b> ${paymentId}</p>
       <hr/>
-      <small>Notificador automático via SendGrid.</small>
+      <small>Notificador automático via Brevo.</small>
     `;
 
-    await sgMail.send({
+    await transporter.sendMail({
+      from: 'mercadopagopixcomprovante@gmail.com', // mesmo e-mail cadastrado na Brevo
       to: MAIL_TO,
-      from: MAIL_TO,
       subject,
       html
     });
 
-    console.log(`E-mail enviado via SendGrid: ${subject}`);
+    console.log(`E-mail enviado via Brevo: ${subject}`);
   } catch (err) {
     console.error('Erro no webhook:', err?.response?.data || err.message);
   }
 });
 
-const PORT = process.env.PORT;
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
 });
